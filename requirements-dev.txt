@@ -1,0 +1,4 @@
+# Local development + CI. Databricks Connect ships its own pyspark:
+# never install "pyspark" in the same virtual environment.
+databricks-connect==17.3.*   # matches serverless environment version 4 (Python 3.12)
+pytest>=8

@@ -1,0 +1,16 @@
+# Python
+.venv/
+.venv-ci/
+__pycache__/
+*.pyc
+.pytest_cache/
+
+# Databricks bundle local state
+.databricks/
+
+# Generated data (re-create with: python data_gen/generate_data.py)
+data/
+
+# Never commit credentials
+.databrickscfg
+.env
