@@ -1,0 +1,51 @@
+# The job: 5 tasks run in order on serverless compute.
+# Paths are relative to THIS file (resources/), hence the "../".
+resources:
+  jobs:
+    claims_pipeline:
+      name: claims_pipeline
+      max_concurrent_runs: 1
+      schedule: # daily at 06:00 Paris time, paused to protect the Free Edition quota
+        quartz_cron_expression: "0 0 6 * * ?"
+        timezone_id: Europe/Paris
+        pause_status: PAUSED
+
+      tasks:
+        - task_key: setup_uc
+          environment_key: default
+          spark_python_task:
+            python_file: ../jobs/run_setup.py
+            parameters: ["--catalog", "${var.catalog}", "--schema", "${var.schema}"]
+
+        - task_key: fetch_weather
+          depends_on: [{ task_key: setup_uc }]
+          environment_key: default
+          spark_python_task:
+            python_file: ../jobs/run_fetch_weather.py
+            parameters: ["--catalog", "${var.catalog}", "--schema", "${var.schema}"]
+
+        - task_key: bronze
+          depends_on: [{ task_key: fetch_weather }]
+          environment_key: default
+          spark_python_task:
+            python_file: ../jobs/run_bronze.py
+            parameters: ["--catalog", "${var.catalog}", "--schema", "${var.schema}"]
+
+        - task_key: silver
+          depends_on: [{ task_key: bronze }]
+          environment_key: default
+          spark_python_task:
+            python_file: ../jobs/run_silver.py
+            parameters: ["--catalog", "${var.catalog}", "--schema", "${var.schema}"]
+
+        - task_key: gold
+          depends_on: [{ task_key: silver }]
+          environment_key: default
+          spark_python_task:
+            python_file: ../jobs/run_gold.py
+            parameters: ["--catalog", "${var.catalog}", "--schema", "${var.schema}"]
+
+      environments:
+        - environment_key: default
+          spec:
+            environment_version: "4" # same as local: Python 3.12 + Databricks Connect 17.3

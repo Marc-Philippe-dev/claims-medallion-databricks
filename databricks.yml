@@ -1,0 +1,32 @@
+# Databricks Asset Bundle: everything Databricks needs to deploy the project.
+# Deploy: databricks bundle deploy -t dev   |   Run: databricks bundle run -t dev claims_pipeline
+bundle:
+  name: claims_medallion
+
+include:
+  - resources/*.yml
+
+variables:
+  catalog:
+    description: Unity Catalog catalog (Free Edition = workspace)
+    default: workspace
+  schema:
+    description: One schema per target, so dev never touches prod tables
+    default: claims_dev
+
+targets:
+  dev:
+    mode: development # prefixes resources with [dev <you>] and pauses schedules
+    default: true
+    workspace:
+      host: https://dbc-6243b904-300f.cloud.databricks.com
+    variables:
+      schema: claims_dev
+
+  prod:
+    mode: production
+    workspace:
+      host: https://dbc-6243b904-300f.cloud.databricks.com # same workspace (Free Edition)
+      root_path: /Workspace/Users/${workspace.current_user.userName}/.bundle/${bundle.name}/${bundle.target}
+    variables:
+      schema: claims_prod
