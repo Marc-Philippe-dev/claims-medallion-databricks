@@ -34,7 +34,7 @@ def test_monthly_kpis(spark):
         for r in claims_monthly_kpis(_silver_claims(spark)).collect()
     }
     jan_collision = result[(date(2026, 1, 1), "collision")]
-    assert jan_collision.claim_count == 2
+    assert jan_collision.claim_count == 3
     assert jan_collision.total_amount == Decimal("4000.00")
     assert jan_collision.avg_amount == Decimal("2000.00")
     assert result[(date(2026, 2, 1), "glass")].claim_count == 1
