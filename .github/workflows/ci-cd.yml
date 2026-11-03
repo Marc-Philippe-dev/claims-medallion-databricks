@@ -1,0 +1,60 @@
+# GitHub Actions CI/CD: on every push to main -> unit tests -> validate -> deploy -> run (prod).
+# Runs on GitHub-hosted runners (ubuntu-latest): no agent to install, no Azure subscription.
+# Secret DATABRICKS_TOKEN and variable DATABRICKS_HOST are defined in
+# GitHub > Settings > Secrets and variables > Actions, never in this file.
+name: CI/CD claims pipeline
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch: # manual "Run workflow" button in the Actions tab
+
+permissions:
+  contents: read # least privilege for the automatic GITHUB_TOKEN
+
+concurrency:
+  group: claims-prod # never two deployments to prod at the same time
+  cancel-in-progress: false
+
+env:
+  DATABRICKS_HOST: ${{ vars.DATABRICKS_HOST }}
+  DATABRICKS_TOKEN: ${{ secrets.DATABRICKS_TOKEN }} # masked as *** in the logs
+  DATABRICKS_AUTH_TYPE: pat
+
+jobs:
+  test:
+    name: Unit tests
+    runs-on: ubuntu-latest
+    env:
+      DATABRICKS_SERVERLESS_COMPUTE_ID: auto
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install dependencies
+        run: pip install -r requirements-dev.txt
+
+      - name: Run pytest
+        run: pytest -v
+
+  deploy:
+    name: Deploy and run (prod)
+    needs: test # skipped if the tests fail
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: databricks/setup-cli@main # installs the Databricks CLI
+
+      - name: Validate bundle
+        run: databricks bundle validate -t prod
+
+      - name: Deploy bundle
+        run: databricks bundle deploy -t prod
+
+      - name: Run job
+        run: databricks bundle run -t prod claims_pipeline
